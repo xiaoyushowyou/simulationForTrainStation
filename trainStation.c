@@ -100,103 +100,148 @@ double RandExp(double M)
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 // event handler for arrival events
-void Arrival (struct EventData *e)
-{
+void Arrival (struct EventData *e) {
 	struct EventData *d;
 	double ts;
+	if (e->EventType != ARRIVAL) {fprintf(stderr, "unexpected event type\n"); exit(1);}
 
-	if (e->EventType != ARRIVAL) {fprintf (stderr, "Unexpected event type\n"); exit(1);}
-	if (DB) printf ("Arrival Event: time=%f\n", CurrentTime());
-
-	// update waiting time statistics
-	if (InTheAir > 1) {	// if there are waiting aircraft, update total waiting time
-		TotalWaitingTime += ((InTheAir-1) * (CurrentTime()-LastEventTime));
-		}
+	//update waiting time statistics
+	if (numWaitHigh>0) {
+		waitTimeH += (numWaitHigh*(CurrentTime()-LastEventTime));
+	}
+	if (numWaitLow>0) 
+	{
+		waitTimeL += (numWaitLow*(CurrentTime()-LastEventTime));
+	}
+	TotalWaitingTime = waitTimeH+waitTimeL;
 
 	// update other statistics
 	NEvents++;		    // event count
 
-	InTheAir++;
-
 	// schedule next arrival event if this is not the last arrival
-	ArrivalCount++;
-	if (ArrivalCount < NARRIVALS) {
-		if((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+	if (numTotalHigh <= NARRIVALSH) {
+		numWaitHigh++;
+		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 		d->EventType = ARRIVAL;
-		ts = CurrentTime() + RandExp(A);
-		Schedule (ts, d, (void *) Arrival);
+		d->TrainType = HIGH;
+		d->PlatFormType = SHARE;
+		ts = CurrentTime() + RandExp(arrivalHigh);
+		Schedule(ts, d, (void*) Arrival);
 	}
 
-	if (RunwayFree) {
-		RunwayFree = 0;				// runway no longer free
-		// schedule landed event
-		if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-		d->EventType = LANDED;
-		ts = CurrentTime() + R;
-		Schedule (ts, d, (void *) Landed);
+	if (numTotalLow <= NARRIVALSL) {
+		numWaitLow++;
+		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+		d->EventType = ARRIVAL;
+		d->TrainType = LOW;
+		d->PlatFormType = SPEC;
+		ts = CurrentTime() + RandExp(arrivalLow);
+		Schedule(ts, d, (void*) Arrival);
 	}
 
-	LastEventTime = CurrentTime();		// time of last event processed
-	free (e);				// free storage for event parameters
+	// schedule depature event if plantform is available. The train will first load/unload passenger, then departure. 
+	if (freeSharePlat && numWaitHigh!=0) {
+		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+		d->EventType = DEPARTURE;
+		d->TrainType = HIGH;
+		d->PlatFormType = SHARE;
+		ts = CurrentTime() + waitTimeH;
+		Schedule(ts, d, (void*) Departure);
+	}
+
+	if (freeSpecialPlat && numWaitLow!=0) {
+		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+		d->EventType = DEPARTURE;
+		d->TrainType = LOW;
+		d->PlatFormType = SPEC;
+		ts = CurrentTime() + waitTimeL;
+		Schedule(ts, d, (void*) Departure);
+	}
+
+	if (!freeSpecialPlat && numWaitLow!=0 && freeSharePlat) {
+		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+		d->EventType = DEPARTURE;
+		d->TrainType = LOW;
+		d->PlatFormType = SHARE;
+		ts = CurrentTime() + waitTimeL;
+		Schedule(ts, d, (void*) Departure);
+	}
+
+	LastEventTime = CurrentTime();
+	free(e);
 }
 
-// event handler for landed events
-void Landed (struct EventData *e)
-{
+
+
+// event handler for depature events, which considers the time spend at platform to load and unload passengers
+void Departure (struct EventData *e) {
 	struct EventData *d;
 	double ts;
 
-	if (e->EventType != LANDED) {fprintf (stderr, "Unexpected event type\n"); exit(1);}
+	if (e->EventType != DEPARTURE) {fprintf (stderr, "Unexpected event type\n"); exit(1);}
 	if (DB) printf ("Landed Event: time=%f\n", CurrentTime());
 
 	// update waiting time statistics
-	if (InTheAir > 1) {	// if there are waiting aircraft, update total waiting time
-		TotalWaitingTime += ((InTheAir-1) * (CurrentTime()-LastEventTime));
-		}
+	if (numWaitHigh>0) {
+		waitTimeH += (numWaitHigh*(CurrentTime()-LastEventTime));
+	}
+	if (numWaitLow>0) 
+	{
+		waitTimeL += (numWaitLow*(CurrentTime()-LastEventTime));
+	}
+	TotalWaitingTime = waitTimeH+waitTimeL;
 
-	NEvents++;		// event count
-	InTheAir--;
-	OnTheGround++;
+	// update other statistics
+	NEvents++;		    // event count
+	if (e->TrainType == HIGH) {
+		numWaitHigh--;
+	}
+	if (e->TrainType == LOW) {
+		numWaitLow--;
+	}
+
 	// schedule departure event
-	if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-	d->EventType = DEPARTURE;
-	ts = CurrentTime() + G;
-	Schedule (ts, d, (void *) Departure);
-
-	if (InTheAir>0) {
-		//  schedule landed event for next aircraft
-		if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-		d->EventType = LANDED;
-		ts = CurrentTime() + R;
-		Schedule (ts, d, (void *) Landed);
-	}
-	else {
-		// runway is now free
-		RunwayFree = 1;
-	}
-
-	LastEventTime = CurrentTime();		// time of last event processed
-	free (e);				// event parameters
-}
-
-
-// event handler for departure events
-void Departure (struct EventData *e)
-{
-	if (e->EventType != DEPARTURE) {fprintf (stderr, "Unexpected event type\n"); exit(1);}
-	if (DB) printf ("Departure Event: time=%f\n", CurrentTime());
-
-	// update statistics
-	if (InTheAir > 1) {	// if there are waiting aircraft, update total waiting time
-		TotalWaitingTime += ((InTheAir-1) * (CurrentTime()-LastEventTime));
+	if (e->PlatFormType == SHARE) {
+		if (numWaitHigh!=0) {
+			if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+			d->EventType = DEPARTURE;
+			d->TrainType = HIGH;
+			d->PlatFormType = SHARE;
+			ts = CurrentTime() + waitTimeH;
+			Schedule(ts, d, (void*) Departure);
 		}
-	NEvents++;		// event count
+		else if (!freeSpecialPlat && numWaitLow!=0) {
+			if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+			d->EventType = DEPARTURE;
+			d->TrainType = LOW;
+			d->PlatFormType = SHARE;
+			ts = CurrentTime() + waitTimeL;
+			Schedule(ts, d, (void*) Departure);
+		}
+		else {
+		freeSharePlat = 1;
+		}
+	}
+	
 
-	OnTheGround--;
+	if (e->PlatFormType == SPEC) {
+		if (numWaitLow!=0) {
+			if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+			d->EventType = DEPARTURE;
+			d->TrainType = LOW;
+			d->PlatFormType = SPEC;
+			ts = CurrentTime() + waitTimeH;
+			Schedule(ts, d, (void*) Departure);
+		}
+		else {
+			freeSpecialPlat = 1;
+		}
+	}
 
-	LastEventTime = CurrentTime();		// time of last event processed
-	free (e);				// event parameters
+	LastEventTime = CurrentTime();
+	free(e);
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //////////// MAIN PROGRAM
@@ -214,15 +259,15 @@ int main (void)
 	ts = RandExp(A);
 	Schedule (ts, d, (void *) Arrival);
 
-	printf ("Welcome to the Airport Simulation\n");
+	printf ("Welcome to the Train Station Simulation\n");
 	StartTime = clock();
 	RunSim();
 	EndTime = clock();
 
 	// print final statistics
-	printf ("Number of aircraft = %d\n", NARRIVALS);
+	printf ("Number of trains = %d\n", (NARRIVALSH+NARRIVALSL));
 	printf ("Total waiting time = %f\n", TotalWaitingTime);
-	printf ("Average waiting time = %f\n", TotalWaitingTime / (double) NARRIVALS);
+	printf ("Average waiting time = %f\n", TotalWaitingTime / (double) (NARRIVALSH+NARRIVALSL));
 
 	Duration = (double) (EndTime-StartTime) / (double) CLOCKS_PER_SEC;
 	printf ("%d events executed in %f seconds (%f events per second)\n", NEvents, Duration, (double)NEvents/Duration);
