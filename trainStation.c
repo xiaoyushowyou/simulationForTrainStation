@@ -104,7 +104,8 @@ void Arrival (struct EventData *e) {
 	struct EventData *d;
 	double ts;
 	if (e->EventType != ARRIVAL) {fprintf(stderr, "unexpected event type\n"); exit(1);}
-
+    if (DB) printf ("Arrival Event: time=%f\n", CurrentTime());
+    
 	//update waiting time statistics
 	if (numWaitHigh>0) {
 		waitTimeH += (numWaitHigh*(CurrentTime()-LastEventTime));
@@ -119,9 +120,10 @@ void Arrival (struct EventData *e) {
 	NEvents++;		    // event count
 
 	// schedule next arrival event if this is not the last arrival
-	if (numTotalHigh <= NARRIVALSH) {
+	if (e->TrainType==HIGH && numTotalHigh <= NARRIVALSH) {
 		numWaitHigh++;
-		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+        numTotalHigh++;
+		if ((d = malloc(sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 		d->EventType = ARRIVAL;
 		d->TrainType = HIGH;
 		d->PlatFormType = SHARE;
@@ -129,41 +131,45 @@ void Arrival (struct EventData *e) {
 		Schedule(ts, d, (void*) Arrival);
 	}
 
-	if (numTotalLow <= NARRIVALSL) {
+	if (e->TrainType==LOW && numTotalLow <= NARRIVALSL) {
 		numWaitLow++;
-		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+        numTotalLow++;
+		if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 		d->EventType = ARRIVAL;
 		d->TrainType = LOW;
 		d->PlatFormType = SPEC;
 		ts = CurrentTime() + RandExp(arrivalLow);
 		Schedule(ts, d, (void*) Arrival);
 	}
-
+    
+    
 	// schedule depature event if plantform is available. The train will first load/unload passenger, then departure. 
 	if (freeSharePlat && numWaitHigh!=0) {
-		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-		d->EventType = DEPARTURE;
+		if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+        freeSharePlat = 0;
+        d->EventType = DEPARTURE;
 		d->TrainType = HIGH;
 		d->PlatFormType = SHARE;
-		ts = CurrentTime() + waitTimeH;
+		ts = CurrentTime() + waitHigh;
 		Schedule(ts, d, (void*) Departure);
 	}
 
 	if (freeSpecialPlat && numWaitLow!=0) {
-		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-		d->EventType = DEPARTURE;
+		if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+        freeSpecialPlat = 0;
+        d->EventType = DEPARTURE;
 		d->TrainType = LOW;
 		d->PlatFormType = SPEC;
-		ts = CurrentTime() + waitTimeL;
+		ts = CurrentTime() + waitLow;
 		Schedule(ts, d, (void*) Departure);
 	}
-
-	if (!freeSpecialPlat && numWaitLow!=0 && freeSharePlat) {
-		if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-		d->EventType = DEPARTURE;
+	else if (!freeSpecialPlat && numWaitLow!=0 && freeSharePlat) {
+		if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+        freeSharePlat = 0;
+        d->EventType = DEPARTURE;
 		d->TrainType = LOW;
 		d->PlatFormType = SHARE;
-		ts = CurrentTime() + waitTimeL;
+		ts = CurrentTime() + waitLow;
 		Schedule(ts, d, (void*) Departure);
 	}
 
@@ -179,7 +185,7 @@ void Departure (struct EventData *e) {
 	double ts;
 
 	if (e->EventType != DEPARTURE) {fprintf (stderr, "Unexpected event type\n"); exit(1);}
-	if (DB) printf ("Landed Event: time=%f\n", CurrentTime());
+	if (DB) printf ("Departure Event: time=%f\n", CurrentTime());
 
 	// update waiting time statistics
 	if (numWaitHigh>0) {
@@ -203,19 +209,19 @@ void Departure (struct EventData *e) {
 	// schedule departure event
 	if (e->PlatFormType == SHARE) {
 		if (numWaitHigh!=0) {
-			if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+			if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 			d->EventType = DEPARTURE;
 			d->TrainType = HIGH;
 			d->PlatFormType = SHARE;
-			ts = CurrentTime() + waitTimeH;
+			ts = CurrentTime() + waitHigh;
 			Schedule(ts, d, (void*) Departure);
 		}
 		else if (!freeSpecialPlat && numWaitLow!=0) {
-			if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+			if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 			d->EventType = DEPARTURE;
 			d->TrainType = LOW;
 			d->PlatFormType = SHARE;
-			ts = CurrentTime() + waitTimeL;
+			ts = CurrentTime() + waitLow;
 			Schedule(ts, d, (void*) Departure);
 		}
 		else {
@@ -226,11 +232,11 @@ void Departure (struct EventData *e) {
 
 	if (e->PlatFormType == SPEC) {
 		if (numWaitLow!=0) {
-			if ((d=malloc.sizeof(struct EventData))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+            if ((d = malloc(sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 			d->EventType = DEPARTURE;
 			d->TrainType = LOW;
 			d->PlatFormType = SPEC;
-			ts = CurrentTime() + waitTimeH;
+			ts = CurrentTime() + waitLow;
 			Schedule(ts, d, (void*) Departure);
 		}
 		else {
@@ -256,7 +262,9 @@ int main (void)
 	// initialize event list with first arrival
 	if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 	d->EventType = ARRIVAL;
-	ts = RandExp(A);
+    d->TrainType = HIGH;
+    d->PlatFormType = SHARE;
+	ts = RandExp(arrivalHigh);
 	Schedule (ts, d, (void *) Arrival);
 
 	printf ("Welcome to the Train Station Simulation\n");
