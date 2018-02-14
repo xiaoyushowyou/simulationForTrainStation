@@ -34,17 +34,17 @@ int NEvents=0;			    // number of events executed
 // State Variables of Simulation
 int freeSharePlat = 1; // boolearn: 1 if shared platform is free, 0 otherwise
 int freeSpecialPlat = 1; // boolearn: 1 if shared platform is free, 0 otherwise
-
-
-
-int	InTheAir=0;	    // # aircraft using runway or waiting to use it
-int	OnTheGround=0;	// # aircraft parked at store
-int	RunwayFree=1;	// boolean: 1 if runway is free, 0 otherwise
-int	ArrivalCount=0;	// number of arrivals simulated; used for termination
+int numWaitHigh = 0; // number of high speed train using platform or waiting to use it
+int numWaitLow = 0; // number of low speed train using platfor or waiting to use it
+int numTotalHigh = 0; // number of total high speed train simulated, used for termination
+int numTotalLow = 0; // number of total low speed train simulated, used for termination
 
 // State variables used for statistics
+double waitTimeH = 0.0;  //total waiting time for high speed trians
+double waitTimeL = 0.0;  //total waiting time for low speed trains
 double	TotalWaitingTime = 0.0;	// total time waiting to land
 double	LastEventTime = 0.0;	// time of last event processed; used to compute TotalWaitingTime
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -53,12 +53,16 @@ double	LastEventTime = 0.0;	// time of last event processed; used to compute Tot
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 // types of events
-typedef enum {ARRIVAL, DEPARTURE, LANDED} KindsOfEvents;
+typedef enum {ARRIVAL, DEPARTURE} KindsOfEvents;
+typedef enum {HIGH, LOW} KindsOfTrains;
+typedef enum {SHARE, SPEC} KindsOfPlat;
 
 // Event parameters
 // No event parameters really needed in this simple simulation
 struct EventData {
 	KindsOfEvents EventType;
+	KindsOfTrains TrainType;
+	KindsOfPlat PlatFormType;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,9 +72,8 @@ struct EventData {
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 // prototypes for event handlers
-void Arrival (struct EventData *e);		// aircraft arrival event
-void Departure (struct EventData *e);	// aircraft departure event
-void Landed (struct EventData *e);		// landed event
+void Arrival (struct EventData *e);		// train arrival event
+void Departure (struct EventData *e);	// train departure event
 
 // prototypes for other procedures
 double RandExp(double M);			// random variable, exponential distribution
