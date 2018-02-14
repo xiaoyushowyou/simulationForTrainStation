@@ -1,0 +1,11 @@
+Train station simulator for two types of train and two platforms developed by Xiaoyu Yang (Feb, 2018)
+
+Files:
+trainStation.c    application program for train station simulation;
+trainStation.h    interface to simulation engine
+trainStationEngine.c   code for simulation engine, which use heap structure as priority queue
+
+To compile and run the program:
+
+gcc trainStation.c trainStationEngine.c
+./a.out

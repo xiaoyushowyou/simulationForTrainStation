@@ -19,16 +19,16 @@ int NEvents=0;			    // number of events executed
 // arrivalLow = mean ineterarrival time for low speed trains
 // waitHigh = time of high speed train when using platform
 // waitLow = time of low speed train when using platform
-#define arrivalHigh 60
-#define arrivalLow 30
-#define waitHigh 15
-#define waitLow 8
+#define arrivalHigh 20
+#define arrivalLow 20
+#define waitHigh 8
+#define waitLow 30
 
 // Flag set to 1 to print debugging statements (event trace), 0 otherwise
 #define DB	1
 
 // number of arrivals for high speed and low speed trains to be simulated (used to determine length of simulation run)
-#define	NARRIVALSL	10
+#define	NARRIVALSL	30
 #define NARRIVALSH  10
 
 // State Variables of Simulation
@@ -104,12 +104,22 @@ void Arrival (struct EventData *e) {
 	struct EventData *d;
 	double ts;
 	if (e->EventType != ARRIVAL) {fprintf(stderr, "unexpected event type\n"); exit(1);}
-    if (DB) printf ("Arrival Event: time=%f\n", CurrentTime());
+    char* myTrain = malloc(sizeof(char*));
+    
+    if (e->TrainType==HIGH) {
+        myTrain = "High Speed Train";
+    }
+    else {
+        myTrain = "Low Speed Train";
+    }
+    
+    if (DB) printf ("Arrival Event for %s: time=%f\n", myTrain ,CurrentTime());
     
 	//update waiting time statistics
 	if (numWaitHigh>0) {
 		waitTimeH += (numWaitHigh*(CurrentTime()-LastEventTime));
 	}
+    
 	if (numWaitLow>0) 
 	{
 		waitTimeL += (numWaitLow*(CurrentTime()-LastEventTime));
@@ -163,15 +173,15 @@ void Arrival (struct EventData *e) {
 		ts = CurrentTime() + waitLow;
 		Schedule(ts, d, (void*) Departure);
 	}
-	else if (!freeSpecialPlat && numWaitLow!=0 && freeSharePlat) {
-		if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-        freeSharePlat = 0;
-        d->EventType = DEPARTURE;
-		d->TrainType = LOW;
-		d->PlatFormType = SHARE;
-		ts = CurrentTime() + waitLow;
-		Schedule(ts, d, (void*) Departure);
-	}
+//    else if (!freeSpecialPlat && numWaitLow!=0 && freeSharePlat) {
+//        if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+//        freeSharePlat = 0;
+//        d->EventType = DEPARTURE;
+//        d->TrainType = LOW;
+//        d->PlatFormType = SHARE;
+//        ts = CurrentTime() + waitLow;
+//        Schedule(ts, d, (void*) Departure);
+//    }
 
 	LastEventTime = CurrentTime();
 	free(e);
@@ -185,16 +195,27 @@ void Departure (struct EventData *e) {
 	double ts;
 
 	if (e->EventType != DEPARTURE) {fprintf (stderr, "Unexpected event type\n"); exit(1);}
-	if (DB) printf ("Departure Event: time=%f\n", CurrentTime());
+    
+    char* myTrain = malloc(sizeof(char*));
+    if (e->TrainType==HIGH) {
+        myTrain = "High Speed Train";
+    }
+    else {
+        myTrain = "Low Speed Train";
+    }
+    
+	if (DB) printf ("Departure Event for %s: time=%f\n", myTrain, CurrentTime());
 
 	// update waiting time statistics
 	if (numWaitHigh>0) {
 		waitTimeH += (numWaitHigh*(CurrentTime()-LastEventTime));
 	}
+    
 	if (numWaitLow>0) 
 	{
 		waitTimeL += (numWaitLow*(CurrentTime()-LastEventTime));
 	}
+    
 	TotalWaitingTime = waitTimeH+waitTimeL;
 
 	// update other statistics
@@ -216,14 +237,14 @@ void Departure (struct EventData *e) {
 			ts = CurrentTime() + waitHigh;
 			Schedule(ts, d, (void*) Departure);
 		}
-		else if (!freeSpecialPlat && numWaitLow!=0) {
-			if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-			d->EventType = DEPARTURE;
-			d->TrainType = LOW;
-			d->PlatFormType = SHARE;
-			ts = CurrentTime() + waitLow;
-			Schedule(ts, d, (void*) Departure);
-		}
+//        else if (!freeSpecialPlat && numWaitLow!=0) {
+//            if ((d=malloc(sizeof(struct EventData)))==NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+//            d->EventType = DEPARTURE;
+//            d->TrainType = LOW;
+//            d->PlatFormType = SHARE;
+//            ts = CurrentTime() + waitLow;
+//            Schedule(ts, d, (void*) Departure);
+//        }
 		else {
 		freeSharePlat = 1;
 		}
@@ -266,6 +287,13 @@ int main (void)
     d->PlatFormType = SHARE;
 	ts = RandExp(arrivalHigh);
 	Schedule (ts, d, (void *) Arrival);
+    
+    if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+    d->EventType = ARRIVAL;
+    d->TrainType = LOW;
+    d->PlatFormType = SPEC;
+    ts = RandExp(arrivalLow);
+    Schedule (ts, d, (void *) Arrival);
 
 	printf ("Welcome to the Train Station Simulation\n");
 	StartTime = clock();
@@ -273,7 +301,12 @@ int main (void)
 	EndTime = clock();
 
 	// print final statistics
-	printf ("Number of trains = %d\n", (NARRIVALSH+NARRIVALSL));
+	printf ("Number of high speed trains = %d\n", NARRIVALSH);
+    printf ("Number of low speed trains = %d\n", NARRIVALSL);
+    printf ("Total waiting time of high speed trains = %f\n", waitTimeH);
+    printf ("Average waiting time of high speed trains = %f\n", (double)waitTimeH/NARRIVALSH);
+    printf ("Total waiting time of low speed trains = %f\n", waitTimeL);
+    printf ("Average waiting time of low speed trains = %f\n", (double)waitTimeL/NARRIVALSL);
 	printf ("Total waiting time = %f\n", TotalWaitingTime);
 	printf ("Average waiting time = %f\n", TotalWaitingTime / (double) (NARRIVALSH+NARRIVALSL));
 
