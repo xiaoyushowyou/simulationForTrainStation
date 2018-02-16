@@ -1,4 +1,6 @@
 // Simulation Engine Interface
+// Start the priority queue structure
+void initQueue();
 
 // Schedule an event with timestamp ts, event parameters *data, and callback function cb
 void Schedule (double ts, void *data, void (*cb)(void *));

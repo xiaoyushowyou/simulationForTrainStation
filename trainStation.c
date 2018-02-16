@@ -279,7 +279,9 @@ int main (void)
 	struct EventData *d;
 	double ts;
 	double Duration;
-
+    
+    // Initialize heap priority queue structure
+    initQueue();
 	// initialize event list with first arrival
 	if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
 	d->EventType = ARRIVAL;
@@ -296,6 +298,7 @@ int main (void)
     Schedule (ts, d, (void *) Arrival);
 
 	printf ("Welcome to the Train Station Simulation\n");
+    
 	StartTime = clock();
 	RunSim();
 	EndTime = clock();
