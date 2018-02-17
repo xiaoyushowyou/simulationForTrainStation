@@ -20,7 +20,7 @@ int NEvents=0;			    // number of events executed
 // waitHigh = time of high speed train when using platform
 // waitLow = time of low speed train when using platform
 #define arrivalHigh 20
-#define arrivalLow 20
+#define arrivalLow 50
 #define waitHigh 8
 #define waitLow 30
 
@@ -28,8 +28,8 @@ int NEvents=0;			    // number of events executed
 #define DB	1
 
 // number of arrivals for high speed and low speed trains to be simulated (used to determine length of simulation run)
-#define	NARRIVALSL	30
-#define NARRIVALSH  10
+#define	NARRIVALSL	16
+#define NARRIVALSH  12
 
 // State Variables of Simulation
 int freeSharePlat = 1; // boolearn: 1 if shared platform is free, 0 otherwise
@@ -58,7 +58,6 @@ typedef enum {HIGH, LOW} KindsOfTrains;
 typedef enum {SHARE, SPEC} KindsOfPlat;
 
 // Event parameters
-// No event parameters really needed in this simple simulation
 struct EventData {
 	KindsOfEvents EventType;
 	KindsOfTrains TrainType;
@@ -273,23 +272,22 @@ void Departure (struct EventData *e) {
 ///////////////////////////////////////////////////////////////////////////////////////
 //////////// MAIN PROGRAM
 ///////////////////////////////////////////////////////////////////////////////////////
-
 int main (void)
 {
-	struct EventData *d;
-	double ts;
-	double Duration;
-    
+    struct EventData *d;
+    double ts;
+    double Duration;
+
     // Initialize heap priority queue structure
     initQueue();
-	// initialize event list with first arrival
-	if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
-	d->EventType = ARRIVAL;
+    // initialize event list with first arrival
+    if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
+    d->EventType = ARRIVAL;
     d->TrainType = HIGH;
     d->PlatFormType = SHARE;
-	ts = RandExp(arrivalHigh);
-	Schedule (ts, d, (void *) Arrival);
-    
+    ts = RandExp(arrivalHigh);
+    Schedule (ts, d, (void *) Arrival);
+
     if ((d=malloc (sizeof(struct EventData))) == NULL) {fprintf(stderr, "malloc error\n"); exit(1);}
     d->EventType = ARRIVAL;
     d->TrainType = LOW;
@@ -297,22 +295,23 @@ int main (void)
     ts = RandExp(arrivalLow);
     Schedule (ts, d, (void *) Arrival);
 
-	printf ("Welcome to the Train Station Simulation\n");
-    
-	StartTime = clock();
-	RunSim();
-	EndTime = clock();
+    printf ("Welcome to the Train Station Simulation\n");
 
-	// print final statistics
-	printf ("Number of high speed trains = %d\n", NARRIVALSH);
+    StartTime = clock();
+    RunSim();
+    EndTime = clock();
+
+    // print final statistics
+    printf ("Number of high speed trains = %d\n", NARRIVALSH);
     printf ("Number of low speed trains = %d\n", NARRIVALSL);
     printf ("Total waiting time of high speed trains = %f\n", waitTimeH);
     printf ("Average waiting time of high speed trains = %f\n", (double)waitTimeH/NARRIVALSH);
     printf ("Total waiting time of low speed trains = %f\n", waitTimeL);
     printf ("Average waiting time of low speed trains = %f\n", (double)waitTimeL/NARRIVALSL);
-	printf ("Total waiting time = %f\n", TotalWaitingTime);
-	printf ("Average waiting time = %f\n", TotalWaitingTime / (double) (NARRIVALSH+NARRIVALSL));
+    printf ("Total waiting time = %f\n", TotalWaitingTime);
+    printf ("Average waiting time = %f\n", TotalWaitingTime / (double) (NARRIVALSH+NARRIVALSL));
 
-	Duration = (double) (EndTime-StartTime) / (double) CLOCKS_PER_SEC;
-	printf ("%d events executed in %f seconds (%f events per second)\n", NEvents, Duration, (double)NEvents/Duration);
+    Duration = (double) (EndTime-StartTime) / (double) CLOCKS_PER_SEC;
+    printf ("%d events executed in %f seconds (%f events per second)\n", NEvents, Duration, (double)NEvents/Duration);
 }
+
